@@ -80,3 +80,43 @@ resource "aws_lambda_event_source_mapping" "sqs_event_source" {
   batch_size       = 10
   enabled          = true
 }
+# Resource: SNS Topic for sending notifications
+resource "aws_sns_topic" "alarm_topic" {
+  name = "sqs-age-alarm-topic"
+}
+
+# Resource: SNS Topic Subscription (Email)
+resource "aws_sns_topic_subscription" "alarm_email_subscription" {
+  topic_arn = aws_sns_topic.alarm_topic.arn
+  protocol  = "email"
+  endpoint  = var.notification_email
+}
+
+# Resource: CloudWatch Alarm for ApproximateAgeOfOldestMessage
+resource "aws_cloudwatch_metric_alarm" "sqs_age_alarm" {
+  alarm_name                = "SQS-ApproximateAgeOfOldestMessage-Alarm"
+  comparison_operator       = "GreaterThanThreshold"
+  evaluation_periods        = 1
+  metric_name               = "ApproximateAgeOfOldestMessage"
+  namespace                 = "AWS/SQS"
+  period                    = 60
+  statistic                 = "Maximum"
+  threshold                 = 300  # Set threshold to 5 minutes (300 seconds)
+  alarm_description         = "Alarm when ApproximateAgeOfOldestMessage is too high"
+  dimensions = {
+    QueueName =  aws_sqs_queue.image_processing_queue.name # Replace with your SQS queue name
+  }
+
+  # Set up the alarm action to send a notification
+  alarm_actions = [
+    aws_sns_topic.alarm_topic.arn
+  ]
+
+  # Set up OK state to reset the alarm
+  ok_actions = [
+    aws_sns_topic.alarm_topic.arn
+  ]
+
+  # Set up insufficient data action
+  insufficient_data_actions = []
+}

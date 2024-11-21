@@ -9,3 +9,6 @@ output "sqs_queue_url" {
 output "s3_bucket" {
   value = var.s3_bucket
 }
+output "sns_topic_arn" {
+  value = aws_sns_topic.alarm_topic.arn
+}
